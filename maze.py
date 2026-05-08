@@ -12,6 +12,8 @@ LERP_SPEED = 1600                    # px/sec – fast slide
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+BLUE  = (0, 100, 255)
+RED   = (255, 50, 50)
 
 
 # ── Maze generation (recursive back-tracker) ──────────────
@@ -83,12 +85,49 @@ def main():
 
     maze = generate_maze(GRID, GRID)
 
-    # Player state
-    gx, gy = 0, 0                          # grid cell
-    px = float(gx * CELL + CELL // 2)      # pixel centre
-    py = float(gy * CELL + CELL // 2)
-    tx, ty = px, py                         # lerp target
-    moving = False
+    # Per-player state: [grid_x, grid_y, pixel_x, pixel_y, target_x, target_y, moving]
+    def make_player():
+        cx = float(0 * CELL + CELL // 2)
+        cy = float(0 * CELL + CELL // 2)
+        return {"gx": 0, "gy": 0, "px": cx, "py": cy, "tx": cx, "ty": cy, "moving": False}
+
+    blue = make_player()   # WASD
+    red  = make_player()   # Arrow keys
+
+    # Key bindings per player
+    blue_keys = {pygame.K_w: (0, -1), pygame.K_s: (0, 1),
+                 pygame.K_a: (-1, 0), pygame.K_d: (1, 0)}
+    red_keys  = {pygame.K_UP: (0, -1), pygame.K_DOWN: (0, 1),
+                 pygame.K_LEFT: (-1, 0), pygame.K_RIGHT: (1, 0)}
+
+    def try_move(p, dx, dy):
+        if p["moving"]:
+            return
+        nx, ny = slide_target(maze, p["gx"], p["gy"], dx, dy)
+        if nx != p["gx"] or ny != p["gy"]:
+            p["gx"], p["gy"] = nx, ny
+            p["tx"] = float(nx * CELL + CELL // 2)
+            p["ty"] = float(ny * CELL + CELL // 2)
+            p["moving"] = True
+
+    def lerp_player(p, dt):
+        if not p["moving"]:
+            return
+        ddx = p["tx"] - p["px"]
+        ddy = p["ty"] - p["py"]
+        dist = (ddx * ddx + ddy * ddy) ** 0.5
+        step = LERP_SPEED * dt
+        if step >= dist or dist < 1:
+            p["px"], p["py"] = p["tx"], p["ty"]
+            p["moving"] = False
+        else:
+            p["px"] += ddx / dist * step
+            p["py"] += ddy / dist * step
+
+    def draw_player(p, color):
+        half = PLAYER_SZ // 2
+        rect = pygame.Rect(int(p["px"]) - half, int(p["py"]) - half, PLAYER_SZ, PLAYER_SZ)
+        pygame.draw.rect(screen, color, rect)
 
     running = True
     while running:
@@ -100,36 +139,16 @@ def main():
             if ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     running = False
-                if not moving:
-                    dx, dy = 0, 0
-                    if ev.key == pygame.K_w or ev.key == pygame.K_UP:
-                        dy = -1
-                    elif ev.key == pygame.K_s or ev.key == pygame.K_DOWN:
-                        dy = 1
-                    elif ev.key == pygame.K_a or ev.key == pygame.K_LEFT:
-                        dx = -1
-                    elif ev.key == pygame.K_d or ev.key == pygame.K_RIGHT:
-                        dx = 1
-                    if dx or dy:
-                        nx, ny = slide_target(maze, gx, gy, dx, dy)
-                        if nx != gx or ny != gy:
-                            gx, gy = nx, ny
-                            tx = float(gx * CELL + CELL // 2)
-                            ty = float(gy * CELL + CELL // 2)
-                            moving = True
+                if ev.key in blue_keys:
+                    dx, dy = blue_keys[ev.key]
+                    try_move(blue, dx, dy)
+                if ev.key in red_keys:
+                    dx, dy = red_keys[ev.key]
+                    try_move(red, dx, dy)
 
         # ── Lerp ──────────────────────────────────────────
-        if moving:
-            ddx = tx - px
-            ddy = ty - py
-            dist = (ddx * ddx + ddy * ddy) ** 0.5
-            step = LERP_SPEED * dt
-            if step >= dist or dist < 1:
-                px, py = tx, ty
-                moving = False
-            else:
-                px += ddx / dist * step
-                py += ddy / dist * step
+        lerp_player(blue, dt)
+        lerp_player(red, dt)
 
         # ── Draw ──────────────────────────────────────────
         screen.fill(BLACK)
@@ -151,10 +170,9 @@ def main():
                 if cell["W"]:
                     pygame.draw.line(screen, WHITE, (x0, y0), (x0, y1), WALL_W)
 
-        # Player
-        half = PLAYER_SZ // 2
-        rect = pygame.Rect(int(px) - half, int(py) - half, PLAYER_SZ, PLAYER_SZ)
-        pygame.draw.rect(screen, WHITE, rect)
+        # Blue first, red on top
+        draw_player(blue, BLUE)
+        draw_player(red, RED)
 
         pygame.display.flip()
 
