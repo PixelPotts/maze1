@@ -172,7 +172,7 @@ def update_player(maze, p, keys, curve, dt):
             break
 
 
-# ── Grunt system ─────────────────────────────────────────
+# ── Enemies > Grunt ───────────────────────────────────────
 def make_grunt(x, y, target_idx):
     return {
         "px": x, "py": y,
