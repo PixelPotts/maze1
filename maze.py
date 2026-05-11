@@ -528,8 +528,8 @@ def run_options(screen, clock):
     overlay = pygame.Surface((WINDOW, WINDOW), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 160))
 
-    active_tab = 0  # 0=General, 1=Enemy Grunts
-    tab_labels = ["General", "Enemy Grunts"]
+    active_tab = 0  # 0=General, 1=Enemies > Grunt
+    tab_labels = ["General", "Enemies > Grunt"]
     tab_w = panel_w // 2 - 20
     tab_rects = [
         pygame.Rect(px + 15, py + 60, tab_w, 32),
